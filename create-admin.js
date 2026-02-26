@@ -1,7 +1,7 @@
 // Helper script to create admin account
 // Usage: node create-admin.js <username> <password>
 
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 
 const [,, username, password] = process.argv;
 

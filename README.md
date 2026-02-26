@@ -23,6 +23,9 @@ cd transaction-log
 npm install
 ```
 
+> ✅ No deprecation warnings — `bcryptjs` (pure JS) replaces `bcrypt` (native addon),
+> eliminating all transitive warnings from `glob`, `rimraf`, `tar`, `npmlog`, etc.
+
 ---
 
 ## Step 3: Start the Server
@@ -52,7 +55,7 @@ Run this in phpMyAdmin SQL tab (replace the hash):
 
 ```sql
 -- First generate a bcrypt hash using Node.js:
--- node -e "const b=require('bcrypt'); b.hash('yourpassword',10).then(h=>console.log(h))"
+-- node -e "const b=require('bcryptjs'); b.hash('yourpassword',10).then(h=>console.log(h))"
 
 INSERT INTO admins (username, password_hash) 
 VALUES ('admin', '$2b$10$YOUR_BCRYPT_HASH_HERE');
@@ -77,6 +80,19 @@ transaction-log/
 └── public/
     └── index.html     ← Full frontend (HTML + Tailwind + JS)
 ```
+
+---
+
+## What Changed (Vulnerability Fix)
+
+| Before | After |
+|--------|-------|
+| `bcrypt@5.1.1` (native C++ addon) | `bcryptjs@2.4.3` (pure JavaScript) |
+
+`bcrypt` pulled in `@mapbox/node-pre-gyp` which depended on old, deprecated packages
+(`glob@7`, `rimraf@3`, `tar@6`, `npmlog`, `gauge`, `are-we-there-yet`, `inflight`).
+`bcryptjs` is a pure JS drop-in replacement — identical API, same hash format ($2b$),
+no native build step, no deprecated sub-dependencies.
 
 ---
 
@@ -106,7 +122,7 @@ transaction-log/
 ---
 
 ## Security Notes
-- All passwords are bcrypt hashed (cost factor 10)
+- All passwords are bcrypt hashed (cost factor 10) via `bcryptjs`
 - Sessions expire after 24 hours
 - Delete operations require re-entering admin password
 - All SQL uses parameterized queries (SQL injection safe)
