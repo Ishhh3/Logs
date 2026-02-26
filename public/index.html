@@ -4,205 +4,445 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Transaction Log System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    .tab-btn.active { background-color: #1d4ed8; color: #fff; }
-    .modal-backdrop { display: none; }
-    .modal-backdrop.open { display: flex; }
-    .toast { animation: slideIn 0.3s ease, fadeOut 0.5s ease 2.5s forwards; }
-    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-    @keyframes fadeOut { to { opacity: 0; pointer-events: none; } }
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: 'DM Sans', sans-serif; background: #e8edf5; font-size: 15px; }
+
+    ::-webkit-scrollbar { width: 0px; height: 0px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: transparent; border-radius: 99px; }
+
+    /* HEADER */
+    .app-header {
+      background: linear-gradient(135deg, #0b1f3a 0%, #0a3560 55%, #0d5fa8 100%);
+      box-shadow: 0 6px 28px rgba(10,30,70,.5);
+    }
+
+    /* TABS */
+    .tab-bar { background: #fff; border-bottom: 2px solid #e2e8f0; overflow: hidden; }
+    .tab-btn {
+      position: relative; padding: 14px 22px;
+      font-weight: 700; font-size: .9rem; color: #64748b;
+      border: none; background: transparent; cursor: pointer;
+      transition: color .2s; white-space: nowrap; font-family: 'DM Sans', sans-serif;
+    }
+    .tab-btn::after {
+      content: ''; position: absolute; bottom: -2px; left: 0; right: 0;
+      height: 3px; border-radius: 3px 3px 0 0;
+      background: transparent; transition: background .2s;
+    }
+    .tab-btn:hover { color: #0d5fa8; }
+    .tab-btn.active { color: #0d5fa8; }
+    .tab-btn.active::after { background: linear-gradient(90deg, #0d5fa8, #1e90ff); }
+
+    /* TABLE CARD - highlighted with colored top border */
+    .table-card {
+      background: #fff;
+      border-radius: 1rem;
+      box-shadow: 0 4px 8px rgba(0,0,0,.06), 0 16px 48px rgba(0,0,0,.08);
+      overflow: hidden;
+      border: 1.5px solid #e2e8f0;
+    }
+
+    /* SECTION HEAD - deep navy gradient */
+    .section-head {
+      background: linear-gradient(135deg, #0b1f3a 0%, #0d4f92 100%);
+      padding: 1.4rem 1.75rem;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .section-head h2 { font-size: 1.2rem; font-weight: 800; color: #fff; letter-spacing: -.01em; margin: 0; }
+    .section-head p  { font-size: .8rem; color: #93c5fd; margin: 3px 0 0; }
+
+    /* TABLE */
+    table { width: 100%; border-collapse: collapse; }
+    thead tr {
+      background: linear-gradient(90deg, #f0f6ff 0%, #e8f2ff 100%);
+      border-bottom: 2px solid #bfdbfe;
+    }
+    thead th {
+      padding: 13px 16px; text-align: left;
+      font-size: .72rem; font-weight: 800; color: #1d4ed8;
+      letter-spacing: .07em; text-transform: uppercase;
+    }
+    tbody tr { border-bottom: 1px solid #f1f5f9; transition: background .12s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #f7faff; }
+    tbody td { padding: 14px 16px; vertical-align: middle; font-size: .9rem; color: #334155; }
+    .td-sub  { font-size: .78rem; color: #94a3b8; margin-top: 2px; }
+    .td-mono { font-family: 'DM Mono', monospace; font-size: .75rem; color: #94a3b8; }
+
+    /* STATUS PILLS */
+    .pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 12px; border-radius: 99px;
+      font-size: .73rem; font-weight: 800; letter-spacing: .04em;
+    }
+    .pill::before { content:''; width:7px; height:7px; border-radius:50%; background:currentColor; opacity:.7; flex-shrink:0; }
+    .pill-Received      { background: #dbeafe; color: #1d4ed8; border:1px solid #bfdbfe; }
+    .pill-Repaired      { background: #fef9c3; color: #a16207; border:1px solid #fde68a; }
+    .pill-Released      { background: #dcfce7; color: #166534; border:1px solid #bbf7d0; }
+    .pill-Borrowed      { background: #ede9fe; color: #6d28d9; border:1px solid #ddd6fe; }
+    .pill-Returned      { background: #dcfce7; color: #166534; border:1px solid #bbf7d0; }
+    .pill-Unserviceable { background: #fee2e2; color: #b91c1c; border:1px solid #fecaca; }
+    .pill-Repair        { background: #dbeafe; color: #1d4ed8; border:1px solid #bfdbfe; }
+    .pill-Borrow        { background: #ede9fe; color: #6d28d9; border:1px solid #ddd6fe; }
+
+    /* TABLE ACTION BUTTONS */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+      padding: 7px 15px; border-radius: 9px; font-size: .8rem; font-weight: 700;
+      cursor: pointer; border: none; font-family: 'DM Sans', sans-serif;
+      letter-spacing: .01em; transition: all .15s; white-space: nowrap;
+    }
+    .btn:hover  { transform: translateY(-2px); }
+    .btn:active { transform: translateY(0); opacity:.9; }
+    .btn-repair  { background: linear-gradient(135deg,#fb923c,#c2410c); color:#fff; box-shadow:0 3px 10px rgba(194,65,12,.4); }
+    .btn-release { background: linear-gradient(135deg,#34d399,#059669); color:#fff; box-shadow:0 3px 10px rgba(5,150,105,.4); }
+    .btn-return  { background: linear-gradient(135deg,#60a5fa,#1d4ed8); color:#fff; box-shadow:0 3px 10px rgba(29,78,216,.4); }
+    .btn-view    { background: linear-gradient(135deg,#6366f1,#4338ca); color:#fff; box-shadow:0 3px 10px rgba(99,102,241,.4); border:none; }
+    .btn-view:hover { background: linear-gradient(135deg,#818cf8,#4f46e5); }
+    .btn-del     { background: linear-gradient(135deg,#f43f5e,#be123c); color:#fff; box-shadow:0 3px 10px rgba(244,63,94,.4); border:none; }
+    .btn-del:hover { background: linear-gradient(135deg,#fb7185,#e11d48); }
+
+    /* CTA BUTTONS in section head */
+    .btn-cta {
+      display:inline-flex; align-items:center; gap:8px;
+      font-weight:800; font-size:.9rem;
+      padding: 11px 22px; border-radius: 12px; border:none; cursor:pointer;
+      font-family:'DM Sans',sans-serif; transition: all .18s; letter-spacing:.01em;
+    }
+    .btn-cta:hover   { transform:translateY(-2px); }
+    .btn-cta:active  { transform:translateY(0); }
+    .btn-cta-blue  {
+      background: linear-gradient(135deg,#38bdf8,#0369a1);
+      color:#fff; box-shadow:0 5px 18px rgba(3,105,161,.5), inset 0 1px 0 rgba(255,255,255,.2);
+    }
+    .btn-cta-green {
+      background: linear-gradient(135deg,#4ade80,#15803d);
+      color:#fff; box-shadow:0 5px 18px rgba(21,128,61,.45), inset 0 1px 0 rgba(255,255,255,.2);
+    }
+
+    /* EMPTY STATE */
+    .empty-state { text-align:center; padding:72px 24px; }
+    .empty-state .ei { font-size:3rem; margin-bottom:12px; opacity:.35; }
+    .empty-state strong { display:block; color:#94a3b8; font-weight:700; font-size:1rem; }
+    .empty-state span   { color:#cbd5e1; font-size:.875rem; }
+
+    /* FORMS */
+    .form-label {
+      display:block; font-size:.72rem; font-weight:800;
+      color:#475569; margin-bottom:.35rem;
+      letter-spacing:.06em; text-transform:uppercase;
+    }
+    .form-input {
+      width:100%; border:1.5px solid #cbd5e1; border-radius:.7rem;
+      padding: .7rem 1rem; font-size:.9rem; font-family:'DM Sans',sans-serif;
+      outline:none; background:#fff; color:#1e293b;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .form-input:focus { border-color:#2563eb; box-shadow:0 0 0 3.5px rgba(37,99,235,.14); }
+    .form-input[readonly]{ background:#f8fafc; color:#64748b; }
+    .form-input::placeholder { color:#c0ccda; }
+
+    /* MODAL */
+    .modal-backdrop { display:none; }
+    .modal-backdrop.open { display:flex; }
+    .modal-panel {
+      background:#fff; border-radius:1.375rem; width:100%; max-height:92vh; overflow-y:auto;
+      box-shadow: 0 32px 80px rgba(0,0,0,.22), 0 4px 16px rgba(0,0,0,.1);
+    }
+    .modal-header {
+      display:flex; justify-content:space-between; align-items:center;
+      padding:1.5rem 2rem 1.15rem;
+      border-bottom: 2px solid #f1f5f9;
+      background: linear-gradient(135deg, #f8faff, #fff);
+    }
+    .mh-icon {
+      width:44px; height:44px; border-radius:13px;
+      display:flex; align-items:center; justify-content:center; font-size:1.3rem; flex-shrink:0;
+    }
+    .modal-header h3 { font-size:1.15rem; font-weight:800; color:#0f172a; }
+    .modal-close {
+      width:34px; height:34px; display:flex; align-items:center; justify-content:center;
+      border-radius:9px; background:#f1f5f9; color:#64748b; cursor:pointer; border:none;
+      font-size:1rem; font-weight:800; transition:all .15s; flex-shrink:0;
+    }
+    .modal-close:hover { background:#e2e8f0; color:#1e293b; }
+    .modal-body { padding:1.5rem 2rem 2rem; }
+
+    /* MODAL BUTTONS */
+    .mbtn-cancel {
+      padding:10px 22px; border-radius:10px; border:1.5px solid #e2e8f0;
+      background:#fff; color:#64748b; font-weight:700; font-size:.875rem;
+      cursor:pointer; font-family:'DM Sans',sans-serif; transition:all .15s;
+    }
+    .mbtn-cancel:hover { background:#f8fafc; border-color:#cbd5e1; }
+    .mbtn-submit {
+      padding:10px 26px; border-radius:10px; border:none;
+      color:#fff; font-weight:800; font-size:.875rem;
+      cursor:pointer; font-family:'DM Sans',sans-serif;
+      transition:all .15s; letter-spacing:.01em;
+    }
+    .mbtn-submit:hover  { transform:translateY(-1px); }
+    .mbtn-submit:active { transform:translateY(0); }
+    .ms-blue   { background:linear-gradient(135deg,#2563eb,#1e3a8a); box-shadow:0 4px 14px rgba(37,99,235,.4); }
+    .ms-orange { background:linear-gradient(135deg,#f97316,#c2410c); box-shadow:0 4px 14px rgba(194,65,12,.4); }
+    .ms-green  { background:linear-gradient(135deg,#22c55e,#15803d); box-shadow:0 4px 14px rgba(21,128,61,.4); }
+    .ms-red    { background:linear-gradient(135deg,#ef4444,#b91c1c); box-shadow:0 4px 14px rgba(185,28,28,.35); }
+
+    /* VIEW SECTION */
+    .vs { background:#f8faff; border:1.5px solid #dbeafe; border-radius:.875rem; padding:1.25rem; margin-bottom:1rem; }
+    .vs-title { font-size:.7rem; font-weight:800; color:#2563eb; letter-spacing:.1em; text-transform:uppercase; margin-bottom:.875rem; }
+    .vs-grid  { display:grid; grid-template-columns:1fr 1fr; gap:.5rem 1.5rem; }
+    .vs-key   { font-size:.75rem; color:#94a3b8; font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
+    .vs-val   { font-size:.9rem; color:#1e293b; font-weight:600; }
+
+    /* DIVIDER */
+    .divider { height:2px; background:linear-gradient(90deg,#e2e8f0,#f8fafc); border-radius:2px; margin:1.1rem 0; }
+
+    /* TOAST */
+    .toast { animation: slideIn .3s ease, fadeOut .5s ease 2.5s forwards; }
+    @keyframes slideIn { from { transform:translateX(120%); opacity:0; } to { transform:translateX(0); opacity:1; } }
+    @keyframes fadeOut { to { opacity:0; pointer-events:none; } }
+
+    /* PENDING BADGE */
+    .pending-count {
+      background:linear-gradient(135deg,#f97316,#ea580c); color:#fff;
+      border-radius:99px; padding:2px 8px; font-size:.65rem; font-weight:800;
+      box-shadow:0 2px 8px rgba(249,115,22,.45);
+    }
+    .pending-count:empty { display: none; }
+
+    /* LOGIN */
+    .login-bg { background:linear-gradient(135deg,#07172e 0%,#0a3560 60%,#0d5aa8 100%); }
+    .login-card {
+      background:#fff; border-radius:1.5rem;
+      box-shadow:0 32px 80px rgba(0,0,0,.3), 0 4px 20px rgba(0,0,0,.12);
+    }
   </style>
 </head>
-<body class="bg-gray-100 min-h-screen">
+<body>
 
-<!-- TOAST CONTAINER -->
-<div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+<div id="toastContainer" class="fixed top-5 right-5 z-[100] flex flex-col gap-2 pointer-events-none"></div>
 
-<!-- LOGIN PAGE -->
-<div id="loginPage" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-900 to-blue-700">
-  <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-sm">
-    <div class="text-center mb-6">
-      <div class="text-4xl mb-2">🖥️</div>
-      <h1 class="text-2xl font-bold text-gray-800">Transaction Log</h1>
-      <p class="text-gray-500 text-sm">Admin Login</p>
+<!-- LOGIN -->
+<div id="loginPage" class="login-bg min-h-screen flex items-center justify-center p-4">
+  <div class="login-card p-9 w-full max-w-sm">
+    <div class="text-center mb-8">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 text-3xl shadow-lg"
+           style="background:linear-gradient(135deg,#1e90ff,#0a3560)">🖥️</div>
+      <h1 class="text-2xl font-extrabold text-slate-800">Transaction Log</h1>
+      <p class="text-slate-400 text-sm mt-1">IT Equipment Management System</p>
     </div>
-    <form id="loginForm" class="space-y-4">
+    <form id="loginForm" class="space-y-5">
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
-        <input id="loginUsername" type="text" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter username" required />
+        <label class="form-label">Username</label>
+        <input id="loginUsername" type="text" class="form-input" placeholder="Enter username" required />
       </div>
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-        <input id="loginPassword" type="password" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter password" required />
+        <label class="form-label">Password</label>
+        <input id="loginPassword" type="password" class="form-input" placeholder="••••••••" required />
       </div>
-      <button type="submit" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2 rounded-lg transition">Login</button>
-      <p id="loginError" class="text-red-500 text-sm text-center hidden"></p>
+      <button type="submit" class="w-full py-3 rounded-xl font-extrabold text-white text-sm tracking-wide transition-all"
+        style="background:linear-gradient(135deg,#1e90ff,#0a3560);box-shadow:0 5px 18px rgba(14,90,192,.45)">
+        Sign In →
+      </button>
+      <p id="loginError" class="text-red-500 text-sm text-center hidden font-semibold"></p>
     </form>
-    <hr class="my-4" />
-    <details class="text-xs text-gray-400">
-      <summary class="cursor-pointer">First time? Create admin</summary>
-      <div class="mt-2 space-y-2">
-        <input id="setupUser" type="text" placeholder="Username" class="w-full border rounded px-3 py-1" />
-        <input id="setupPass" type="password" placeholder="Password" class="w-full border rounded px-3 py-1" />
-        <button onclick="createAdmin()" class="w-full bg-green-600 text-white py-1 rounded text-xs">Create Admin</button>
-        <p id="setupMsg" class="text-center"></p>
+    <hr class="my-5 border-slate-100" />
+    <details class="text-xs text-slate-400">
+      <summary class="cursor-pointer hover:text-slate-600 transition font-semibold">First time? Create admin account</summary>
+      <div class="mt-3 space-y-2.5">
+        <input id="setupUser" type="text" placeholder="Username" class="form-input" />
+        <input id="setupPass" type="password" placeholder="Password" class="form-input" />
+        <button onclick="createAdmin()" class="w-full py-2.5 rounded-lg font-bold text-white text-sm transition"
+          style="background:linear-gradient(135deg,#22c55e,#15803d);box-shadow:0 3px 10px rgba(21,128,61,.35)">
+          Create Admin
+        </button>
+        <p id="setupMsg" class="text-center font-semibold text-xs"></p>
       </div>
     </details>
   </div>
 </div>
 
 <!-- MAIN APP -->
-<div id="mainApp" class="hidden">
-  <!-- HEADER -->
-  <header class="bg-blue-800 text-white shadow-lg">
-    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+<div id="mainApp" class="hidden min-h-screen">
+
+  <header class="app-header text-white sticky top-0 z-30">
+    <div class="max-w-screen-xl mx-auto px-6 py-4 flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <span class="text-2xl">🖥️</span>
+        <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
+             style="background:rgba(255,255,255,.12)">🖥️</div>
         <div>
-          <h1 class="font-bold text-lg leading-tight">Transaction Log System</h1>
-          <p class="text-blue-200 text-xs">IT Equipment Management</p>
+          <h1 class="font-extrabold text-base leading-tight tracking-tight">Transaction Log System</h1>
+          <p class="text-blue-300 text-xs font-medium">IT Equipment Management</p>
         </div>
       </div>
       <div class="flex items-center gap-3">
-        <span class="text-sm text-blue-200">👤 <span id="adminName"></span></span>
-        <button onclick="logout()" class="bg-red-500 hover:bg-red-600 px-4 py-1 rounded text-sm font-medium transition">Logout</button>
+        <div class="hidden sm:flex items-center gap-2 rounded-full px-3 py-1.5" style="background:rgba(255,255,255,.1)">
+          <div id="adminInitial" class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-extrabold text-white"
+               style="background:linear-gradient(135deg,#38bdf8,#0369a1)">A</div>
+          <span id="adminName" class="text-sm font-semibold text-white/90"></span>
+        </div>
+        <button onclick="logout()" class="text-sm font-bold px-4 py-2 rounded-lg transition text-white"
+          style="background:rgba(239,68,68,.8);border:1px solid rgba(239,68,68,.4)">
+          Sign Out
+        </button>
       </div>
     </div>
   </header>
 
-  <!-- TABS -->
-  <div class="bg-white shadow-sm sticky top-0 z-20">
-    <div class="max-w-7xl mx-auto px-4">
-      <nav class="flex gap-1 py-2 overflow-x-auto">
-        <button onclick="switchTab('repair')" id="tab-repair" class="tab-btn active px-5 py-2 rounded-lg font-medium text-sm text-gray-600 hover:bg-blue-100 transition whitespace-nowrap">🛠 Repair Log</button>
-        <button onclick="switchTab('borrow')" id="tab-borrow" class="tab-btn px-5 py-2 rounded-lg font-medium text-sm text-gray-600 hover:bg-blue-100 transition whitespace-nowrap">📦 Borrow Log</button>
-        <button onclick="switchTab('pending')" id="tab-pending" class="tab-btn px-5 py-2 rounded-lg font-medium text-sm text-gray-600 hover:bg-blue-100 transition whitespace-nowrap">⏳ Pending <span id="pendingBadge" class="bg-red-500 text-white text-xs rounded-full px-1.5 ml-1"></span></button>
-        <button onclick="switchTab('history')" id="tab-history" class="tab-btn px-5 py-2 rounded-lg font-medium text-sm text-gray-600 hover:bg-blue-100 transition whitespace-nowrap">📜 History</button>
+  <div class="tab-bar sticky z-20" style="top:66px">
+    <div class="max-w-screen-xl mx-auto px-6">
+      <nav class="flex overflow-x-hidden">
+        <button onclick="switchTab('repair')"  id="tab-repair"  class="tab-btn active">🛠️&nbsp; Repair Log</button>
+        <button onclick="switchTab('borrow')"  id="tab-borrow"  class="tab-btn">📦&nbsp; Borrow Log</button>
+        <button onclick="switchTab('pending')" id="tab-pending" class="tab-btn">
+          ⏳&nbsp; Pending &nbsp;<span id="pendingBadge" class="pending-count"></span>
+        </button>
+        <button onclick="switchTab('history')" id="tab-history" class="tab-btn">📜&nbsp; History</button>
       </nav>
     </div>
   </div>
 
-  <!-- CONTENT -->
-  <main class="max-w-7xl mx-auto px-4 py-6">
+  <main class="max-w-screen-xl mx-auto px-6 py-7">
 
     <!-- REPAIR TAB -->
     <div id="tab-repair-content">
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-xl font-bold text-gray-800">🛠 Repair Log</h2>
-        <button onclick="openModal('receiveModal')" class="bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition">+ Receive Item</button>
-      </div>
-      <div class="bg-white rounded-xl shadow overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead class="bg-gray-50 text-gray-600 uppercase text-xs">
-            <tr>
-              <th class="px-4 py-3 text-left">ID</th>
-              <th class="px-4 py-3 text-left">Office</th>
-              <th class="px-4 py-3 text-left">Brought By</th>
-              <th class="px-4 py-3 text-left">Product</th>
-              <th class="px-4 py-3 text-left">Qty</th>
-              <th class="px-4 py-3 text-left">Problem</th>
-              <th class="px-4 py-3 text-left">Received By</th>
-              <th class="px-4 py-3 text-left">Contact</th>
-              <th class="px-4 py-3 text-left">Date</th>
-              <th class="px-4 py-3 text-left">Status</th>
-              <th class="px-4 py-3 text-left">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="repairTableBody" class="divide-y divide-gray-100 text-gray-700"></tbody>
-        </table>
-        <div id="repairEmpty" class="hidden text-center py-10 text-gray-400">No repair records found.</div>
+      <div class="table-card">
+        <div class="section-head">
+          <div><h2>🛠️ &nbsp;Repair Log</h2><p>Track items received for repair</p></div>
+          <button onclick="openModal('receiveModal')" class="btn-cta btn-cta-blue">
+            <span style="font-size:1.15rem;line-height:1;font-weight:900">＋</span> Receive Item
+          </button>
+        </div>
+        <div class="overflow-x-auto">
+          <table>
+            <thead><tr>
+              <th>ID</th><th>Office</th><th>Brought By</th><th>Product</th>
+              <th>Qty</th><th>Problem</th><th>Received By</th>
+              <th>Date</th><th>Status</th><th>Actions</th>
+            </tr></thead>
+            <tbody id="repairTableBody"></tbody>
+          </table>
+        </div>
+        <div id="repairEmpty" class="hidden empty-state">
+          <div class="ei">🛠️</div>
+          <strong>No repair records found</strong>
+          <span>Click "Receive Item" to get started</span>
+        </div>
       </div>
     </div>
 
     <!-- BORROW TAB -->
     <div id="tab-borrow-content" class="hidden">
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-xl font-bold text-gray-800">📦 Borrow Log</h2>
-        <button onclick="openModal('borrowModal')" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">+ New Borrow</button>
-      </div>
-      <div class="bg-white rounded-xl shadow overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead class="bg-gray-50 text-gray-600 uppercase text-xs">
-            <tr>
-              <th class="px-4 py-3 text-left">ID</th>
-              <th class="px-4 py-3 text-left">Borrower</th>
-              <th class="px-4 py-3 text-left">Released By</th>
-              <th class="px-4 py-3 text-left">Item</th>
-              <th class="px-4 py-3 text-left">Qty</th>
-              <th class="px-4 py-3 text-left">Borrow Date</th>
-              <th class="px-4 py-3 text-left">Status</th>
-              <th class="px-4 py-3 text-left">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="borrowTableBody" class="divide-y divide-gray-100 text-gray-700"></tbody>
-        </table>
-        <div id="borrowEmpty" class="hidden text-center py-10 text-gray-400">No borrow records found.</div>
+      <div class="table-card">
+        <div class="section-head">
+          <div><h2>📦 &nbsp;Borrow Log</h2><p>Track borrowed equipment</p></div>
+          <button onclick="openModal('borrowModal')" class="btn-cta btn-cta-green">
+            <span style="font-size:1.15rem;line-height:1;font-weight:900">＋</span> New Borrow
+          </button>
+        </div>
+        <div class="overflow-x-auto">
+          <table>
+            <thead><tr>
+              <th>ID</th><th>Borrower</th><th>Office</th><th>Released By</th>
+              <th>Item</th><th>Qty</th><th>Borrow Date</th><th>Status</th><th>Actions</th>
+            </tr></thead>
+            <tbody id="borrowTableBody"></tbody>
+          </table>
+        </div>
+        <div id="borrowEmpty" class="hidden empty-state">
+          <div class="ei">📦</div>
+          <strong>No borrow records found</strong>
+          <span>Click "New Borrow" to log a transaction</span>
+        </div>
       </div>
     </div>
 
     <!-- PENDING TAB -->
     <div id="tab-pending-content" class="hidden">
-      <h2 class="text-xl font-bold text-gray-800 mb-4">⏳ Pending Items</h2>
-      <div class="bg-white rounded-xl shadow overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead class="bg-gray-50 text-gray-600 uppercase text-xs">
-            <tr>
-              <th class="px-4 py-3 text-left">ID</th>
-              <th class="px-4 py-3 text-left">Type</th>
-              <th class="px-4 py-3 text-left">Details</th>
-              <th class="px-4 py-3 text-left">Status</th>
-              <th class="px-4 py-3 text-left">Date</th>
-              <th class="px-4 py-3 text-left">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="pendingTableBody" class="divide-y divide-gray-100 text-gray-700"></tbody>
-        </table>
-        <div id="pendingEmpty" class="hidden text-center py-10 text-gray-400">No pending items.</div>
+      <div class="table-card">
+        <div class="section-head">
+          <div><h2>⏳ &nbsp;Pending Items</h2><p>Items awaiting action</p></div>
+        </div>
+        <div class="overflow-x-auto">
+          <table>
+            <thead><tr><th>ID</th><th>Type</th><th>Details</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+            <tbody id="pendingTableBody"></tbody>
+          </table>
+        </div>
+        <div id="pendingEmpty" class="hidden empty-state">
+          <div class="ei">✅</div><strong>All clear — no pending items</strong>
+        </div>
       </div>
     </div>
 
     <!-- HISTORY TAB -->
     <div id="tab-history-content" class="hidden">
-      <h2 class="text-xl font-bold text-gray-800 mb-4">📜 History</h2>
-      <div class="bg-white rounded-xl shadow overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead class="bg-gray-50 text-gray-600 uppercase text-xs">
-            <tr>
-              <th class="px-4 py-3 text-left">ID</th>
-              <th class="px-4 py-3 text-left">Type</th>
-              <th class="px-4 py-3 text-left">Details</th>
-              <th class="px-4 py-3 text-left">Completed Date</th>
-              <th class="px-4 py-3 text-left">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="historyTableBody" class="divide-y divide-gray-100 text-gray-700"></tbody>
-        </table>
-        <div id="historyEmpty" class="hidden text-center py-10 text-gray-400">No history records yet.</div>
+      <div class="table-card">
+        <div class="section-head">
+          <div><h2>📜 &nbsp;History</h2><p>Completed repairs and returns</p></div>
+        </div>
+        <div class="overflow-x-auto">
+          <table>
+            <thead><tr><th>ID</th><th>Type</th><th>Details</th><th>Completed</th><th>Actions</th></tr></thead>
+            <tbody id="historyTableBody"></tbody>
+          </table>
+        </div>
+        <div id="historyEmpty" class="hidden empty-state">
+          <div class="ei">📜</div><strong>No history records yet</strong>
+        </div>
       </div>
     </div>
+
   </main>
 </div>
 
-<!-- ============================================================ -->
-<!-- MODALS -->
-<!-- ============================================================ -->
-
-<!-- RECEIVE MODAL -->
-<div id="receiveModal" class="modal-backdrop fixed inset-0 bg-black bg-opacity-50 z-30 items-center justify-center p-4">
-  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-    <div class="p-6">
-      <div class="flex justify-between items-center mb-5">
-        <h3 class="text-lg font-bold text-gray-800">📥 Receive Item for Repair</h3>
-        <button onclick="closeModal('receiveModal')" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+<!-- ═══ RECEIVE MODAL ══════════════════════════════════════════ -->
+<div id="receiveModal" class="modal-backdrop fixed inset-0 bg-black/50 backdrop-blur-sm z-40 items-center justify-center p-4">
+  <div class="modal-panel max-w-2xl">
+    <div class="modal-header">
+      <div class="flex items-center gap-3">
+        <div class="mh-icon" style="background:#dbeafe">📥</div>
+        <h3>Receive Item for Repair</h3>
       </div>
+      <button onclick="closeModal('receiveModal')" class="modal-close">✕</button>
+    </div>
+    <div class="modal-body">
       <form id="receiveForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div class="md:col-span-2">
-          <label class="form-label">Office Name *</label>
-          <input name="office_name" type="text" class="form-input" placeholder="e.g. Mayor's Office" required />
+          <label class="form-label">Office Name <span style="color:#ef4444">*</span></label>
+          <select name="office_name_select" id="officeSelect" class="form-input" onchange="handleOfficeChange()" required>
+            <option value="" disabled selected>— Select Office —</option>
+            <option>Mayor's Office</option><option>Vice Mayor's Office</option>
+            <option>Office of the Secretary to the Sanggunian</option>
+            <option>Office of the Municipal Administrator</option>
+            <option>Municipal Civil Registrar's Office</option>
+            <option>Municipal Budget Office</option><option>Municipal Treasurer's Office</option>
+            <option>Municipal Assessor's Office</option>
+            <option>Municipal Planning &amp; Development Office</option>
+            <option>Municipal Social Welfare &amp; Development Office</option>
+            <option>Municipal Health Office</option><option>Municipal Engineering Office</option>
+            <option>Municipal Agriculture Office</option>
+            <option>Municipal Environment &amp; Natural Resources Office</option>
+            <option>Human Resource Management Office</option>
+            <option>Information Technology Office</option>
+            <option>Business Permit &amp; Licensing Office</option>
+            <option value="Others">Others</option>
+          </select>
+          <input type="hidden" name="office_name" id="officeNameHidden" />
+          <div id="otherOfficeWrapper" class="hidden mt-2">
+            <input type="text" id="otherOfficeName" class="form-input" placeholder="Type office name…"
+              oninput="document.getElementById('officeNameHidden').value=this.value" />
+          </div>
         </div>
         <div>
-          <label class="form-label">Person Who Brought Item *</label>
+          <label class="form-label">Person Who Brought Item <span style="color:#ef4444">*</span></label>
           <input name="brought_by_name" type="text" class="form-input" placeholder="Full name" required />
         </div>
         <div>
@@ -213,12 +453,13 @@
             <option value="Office Representative">Office Representative</option>
           </select>
         </div>
+        <div class="divider md:col-span-2"></div>
         <div>
-          <label class="form-label">Product Name *</label>
+          <label class="form-label">Product Name <span style="color:#ef4444">*</span></label>
           <input name="product_name" type="text" class="form-input" placeholder="e.g. Dell Laptop" required />
         </div>
         <div>
-          <label class="form-label">Quantity *</label>
+          <label class="form-label">Quantity <span style="color:#ef4444">*</span></label>
           <input name="quantity" type="number" min="1" value="1" class="form-input" required />
         </div>
         <div>
@@ -231,10 +472,11 @@
         </div>
         <div class="md:col-span-2">
           <label class="form-label">Problem Description</label>
-          <textarea name="problem_description" class="form-input" rows="2" placeholder="Describe the issue..."></textarea>
+          <textarea name="problem_description" class="form-input" rows="2" placeholder="Describe the issue…"></textarea>
         </div>
+        <div class="divider md:col-span-2"></div>
         <div>
-          <label class="form-label">Received By *</label>
+          <label class="form-label">Received By <span style="color:#ef4444">*</span></label>
           <input name="received_by_name" type="text" class="form-input" placeholder="Full name" required />
         </div>
         <div>
@@ -245,726 +487,542 @@
           </select>
         </div>
         <div>
-          <label class="form-label">Contact Number</label>
-          <input name="contact_number" type="text" class="form-input" placeholder="Optional" />
-        </div>
-        <div>
-          <label class="form-label">Date *</label>
+          <label class="form-label">Date <span style="color:#ef4444">*</span></label>
           <input name="receive_date" type="date" class="form-input" required />
         </div>
-        <div class="md:col-span-2 flex gap-3 justify-end pt-2">
-          <button type="button" onclick="closeModal('receiveModal')" class="px-5 py-2 rounded-lg border text-gray-600 hover:bg-gray-100">Cancel</button>
-          <button type="submit" class="px-5 py-2 rounded-lg bg-blue-700 text-white hover:bg-blue-800 font-medium">Submit</button>
+        <div class="md:col-span-2 flex gap-3 justify-end pt-3">
+          <button type="button" onclick="closeModal('receiveModal')" class="mbtn-cancel">Cancel</button>
+          <button type="submit" class="mbtn-submit ms-blue">Submit</button>
         </div>
       </form>
     </div>
   </div>
 </div>
 
-<!-- REPAIR MODAL -->
-<div id="repairModal" class="modal-backdrop fixed inset-0 bg-black bg-opacity-50 z-30 items-center justify-center p-4">
-  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
-    <div class="p-6">
-      <div class="flex justify-between items-center mb-5">
-        <h3 class="text-lg font-bold text-gray-800">🔧 Repair Details</h3>
-        <button onclick="closeModal('repairModal')" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+<!-- ═══ REPAIR MODAL ═══════════════════════════════════════════ -->
+<div id="repairModal" class="modal-backdrop fixed inset-0 bg-black/50 backdrop-blur-sm z-40 items-center justify-center p-4">
+  <div class="modal-panel max-w-lg">
+    <div class="modal-header">
+      <div class="flex items-center gap-3">
+        <div class="mh-icon" style="background:#ffedd5">🔧</div>
+        <h3>Repair Details</h3>
       </div>
+      <button onclick="closeModal('repairModal')" class="modal-close">✕</button>
+    </div>
+    <div class="modal-body">
       <input type="hidden" id="repairTxId" />
-      <form id="repairForm" class="space-y-4">
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="form-label">Repair Person *</label>
-            <input name="repair_person_name" type="text" class="form-input" placeholder="Full name" required />
-          </div>
-          <div>
-            <label class="form-label">Role</label>
-            <select name="repair_person_role" class="form-input">
-              <option value="Employee">Employee</option>
-              <option value="OJT">OJT</option>
-            </select>
-          </div>
-          <div>
-            <label class="form-label">Repair Date *</label>
-            <input name="repair_date" type="date" class="form-input" required />
-          </div>
-          <div>
-            <label class="form-label">Status *</label>
-            <select name="repair_status" class="form-input" required>
-              <option value="Fixed">Fixed</option>
-              <option value="Unserviceable">Unserviceable</option>
-            </select>
-          </div>
+      <form id="repairForm" class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="form-label">Repair Person <span style="color:#ef4444">*</span></label>
+          <input name="repair_person_name" type="text" class="form-input" placeholder="Full name" required />
         </div>
         <div>
-          <label class="form-label">Comment</label>
-          <textarea name="comment" class="form-input" rows="2" placeholder="Additional notes..."></textarea>
+          <label class="form-label">Role</label>
+          <select name="repair_person_role" class="form-input">
+            <option value="Employee">Employee</option><option value="OJT">OJT</option>
+          </select>
         </div>
-        <div class="flex gap-3 justify-end pt-2">
-          <button type="button" onclick="closeModal('repairModal')" class="px-5 py-2 rounded-lg border text-gray-600 hover:bg-gray-100">Cancel</button>
-          <button type="submit" class="px-5 py-2 rounded-lg bg-orange-600 text-white hover:bg-orange-700 font-medium">Save Repair</button>
+        <div>
+          <label class="form-label">Repair Date <span style="color:#ef4444">*</span></label>
+          <input name="repair_date" type="date" class="form-input" required />
+        </div>
+        <div>
+          <label class="form-label">Status <span style="color:#ef4444">*</span></label>
+          <select name="repair_status" class="form-input" required>
+            <option value="Fixed">Fixed</option><option value="Unserviceable">Unserviceable</option>
+          </select>
+        </div>
+        <div class="col-span-2">
+          <label class="form-label">Comment</label>
+          <textarea name="comment" class="form-input" rows="2" placeholder="Additional notes…"></textarea>
+        </div>
+        <div class="col-span-2 flex gap-3 justify-end pt-2">
+          <button type="button" onclick="closeModal('repairModal')" class="mbtn-cancel">Cancel</button>
+          <button type="submit" class="mbtn-submit ms-orange">Save Repair</button>
         </div>
       </form>
     </div>
   </div>
 </div>
 
-<!-- RELEASE MODAL -->
-<div id="releaseModal" class="modal-backdrop fixed inset-0 bg-black bg-opacity-50 z-30 items-center justify-center p-4">
-  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
-    <div class="p-6">
-      <div class="flex justify-between items-center mb-5">
-        <h3 class="text-lg font-bold text-gray-800">📤 Release Item</h3>
-        <button onclick="closeModal('releaseModal')" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+<!-- ═══ RELEASE MODAL ══════════════════════════════════════════ -->
+<div id="releaseModal" class="modal-backdrop fixed inset-0 bg-black/50 backdrop-blur-sm z-40 items-center justify-center p-4">
+  <div class="modal-panel max-w-lg">
+    <div class="modal-header">
+      <div class="flex items-center gap-3">
+        <div class="mh-icon" style="background:#dcfce7">📤</div>
+        <h3>Release Item</h3>
       </div>
+      <button onclick="closeModal('releaseModal')" class="modal-close">✕</button>
+    </div>
+    <div class="modal-body">
       <input type="hidden" id="releaseTxId" />
       <form id="releaseForm" class="space-y-4">
         <div>
-          <label class="form-label">Received By (Claiming Person) *</label>
+          <label class="form-label">Received By (Claiming Person) <span style="color:#ef4444">*</span></label>
           <input name="released_to_name" type="text" class="form-input" placeholder="Full name" required />
         </div>
-        <div>
-          <label class="form-label">Released By *</label>
-          <input name="released_by_name" type="text" class="form-input" placeholder="Full name" required />
-        </div>
-        <div>
-          <label class="form-label">Release Date *</label>
-          <input name="release_date" type="date" class="form-input" required />
-        </div>
-        <div class="flex gap-3 justify-end pt-2">
-          <button type="button" onclick="closeModal('releaseModal')" class="px-5 py-2 rounded-lg border text-gray-600 hover:bg-gray-100">Cancel</button>
-          <button type="submit" class="px-5 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 font-medium">Release</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-
-<!-- BORROW MODAL -->
-<div id="borrowModal" class="modal-backdrop fixed inset-0 bg-black bg-opacity-50 z-30 items-center justify-center p-4">
-  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
-    <div class="p-6">
-      <div class="flex justify-between items-center mb-5">
-        <h3 class="text-lg font-bold text-gray-800">📦 New Borrow Transaction</h3>
-        <button onclick="closeModal('borrowModal')" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
-      </div>
-      <form id="borrowForm" class="space-y-4">
         <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="form-label">Borrower Name *</label>
-            <input name="borrower_name" type="text" class="form-input" placeholder="Full name" required />
-          </div>
-          <div>
-            <label class="form-label">Released By *</label>
+            <label class="form-label">Released By <span style="color:#ef4444">*</span></label>
             <input name="released_by_name" type="text" class="form-input" placeholder="Full name" required />
           </div>
           <div>
-            <label class="form-label">Item Name *</label>
-            <input name="item_name" type="text" class="form-input" placeholder="e.g. Projector" required />
-          </div>
-          <div>
-            <label class="form-label">Quantity *</label>
-            <input name="quantity" type="number" min="1" value="1" class="form-input" required />
-          </div>
-          <div class="col-span-2">
-            <label class="form-label">Borrow Date *</label>
-            <input name="borrow_date" type="date" class="form-input" required />
+            <label class="form-label">Release Date <span style="color:#ef4444">*</span></label>
+            <input name="release_date" type="date" class="form-input" required />
           </div>
         </div>
         <div class="flex gap-3 justify-end pt-2">
-          <button type="button" onclick="closeModal('borrowModal')" class="px-5 py-2 rounded-lg border text-gray-600 hover:bg-gray-100">Cancel</button>
-          <button type="submit" class="px-5 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 font-medium">Submit</button>
+          <button type="button" onclick="closeModal('releaseModal')" class="mbtn-cancel">Cancel</button>
+          <button type="submit" class="mbtn-submit ms-green">Release Item</button>
         </div>
       </form>
     </div>
   </div>
 </div>
 
-<!-- RETURN MODAL -->
-<div id="returnModal" class="modal-backdrop fixed inset-0 bg-black bg-opacity-50 z-30 items-center justify-center p-4">
-  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-    <div class="p-6">
-      <div class="flex justify-between items-center mb-5">
-        <h3 class="text-lg font-bold text-gray-800">↩️ Return Item</h3>
-        <button onclick="closeModal('returnModal')" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+<!-- ═══ BORROW MODAL ═══════════════════════════════════════════ -->
+<div id="borrowModal" class="modal-backdrop fixed inset-0 bg-black/50 backdrop-blur-sm z-40 items-center justify-center p-4">
+  <div class="modal-panel max-w-lg">
+    <div class="modal-header">
+      <div class="flex items-center gap-3">
+        <div class="mh-icon" style="background:#ede9fe">📦</div>
+        <h3>New Borrow Transaction</h3>
       </div>
+      <button onclick="closeModal('borrowModal')" class="modal-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <form id="borrowForm" class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="form-label">Borrower Name <span style="color:#ef4444">*</span></label>
+          <input name="borrower_name" type="text" class="form-input" placeholder="Full name" required />
+        </div>
+        <div>
+          <label class="form-label">Office <span style="color:#ef4444">*</span></label>
+          <select name="borrow_office_select" id="borrowOfficeSelect" class="form-input" onchange="handleBorrowOfficeChange()" required>
+            <option value="" disabled selected>— Select Office —</option>
+            <option>Mayor's Office</option><option>Vice Mayor's Office</option>
+            <option>Office of the Secretary to the Sanggunian</option>
+            <option>Office of the Municipal Administrator</option>
+            <option>Municipal Civil Registrar's Office</option>
+            <option>Municipal Budget Office</option><option>Municipal Treasurer's Office</option>
+            <option>Municipal Assessor's Office</option>
+            <option>Municipal Planning &amp; Development Office</option>
+            <option>Municipal Social Welfare &amp; Development Office</option>
+            <option>Municipal Health Office</option><option>Municipal Engineering Office</option>
+            <option>Municipal Agriculture Office</option>
+            <option>Municipal Environment &amp; Natural Resources Office</option>
+            <option>Human Resource Management Office</option>
+            <option>Information Technology Office</option>
+            <option>Business Permit &amp; Licensing Office</option>
+            <option value="Others">Others</option>
+          </select>
+          <input type="hidden" name="borrow_office" id="borrowOfficeHidden" />
+          <div id="otherBorrowOfficeWrapper" class="hidden mt-2">
+            <input type="text" id="otherBorrowOfficeName" class="form-input" placeholder="Type office name…"
+              oninput="document.getElementById('borrowOfficeHidden').value=this.value" />
+          </div>
+        </div>
+        <div class="divider col-span-2"></div>
+        <div>
+          <label class="form-label">Released By <span style="color:#ef4444">*</span></label>
+          <input name="released_by_name" type="text" class="form-input" placeholder="Full name" required />
+        </div>
+        <div>
+          <label class="form-label">Role</label>
+          <select name="released_by_role" class="form-input">
+            <option value="Employee">Employee</option>
+            <option value="OJT">OJT</option>
+            <option value="Office Representative">Office Representative</option>
+          </select>
+        </div>
+        <div class="divider col-span-2"></div>
+        <div>
+          <label class="form-label">Item Name <span style="color:#ef4444">*</span></label>
+          <input name="item_name" type="text" class="form-input" placeholder="e.g. Projector" required />
+        </div>
+        <div>
+          <label class="form-label">Quantity <span style="color:#ef4444">*</span></label>
+          <input name="quantity" type="number" min="1" value="1" class="form-input" required />
+        </div>
+        <div class="col-span-2">
+          <label class="form-label">Borrow Date <span style="color:#ef4444">*</span></label>
+          <input name="borrow_date" type="date" class="form-input" required />
+        </div>
+        <div class="col-span-2 flex gap-3 justify-end pt-2">
+          <button type="button" onclick="closeModal('borrowModal')" class="mbtn-cancel">Cancel</button>
+          <button type="submit" class="mbtn-submit ms-green">Submit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ RETURN MODAL ═══════════════════════════════════════════ -->
+<div id="returnModal" class="modal-backdrop fixed inset-0 bg-black/50 backdrop-blur-sm z-40 items-center justify-center p-4">
+  <div class="modal-panel max-w-md">
+    <div class="modal-header">
+      <div class="flex items-center gap-3">
+        <div class="mh-icon" style="background:#dbeafe">↩️</div>
+        <h3>Return Item</h3>
+      </div>
+      <button onclick="closeModal('returnModal')" class="modal-close">✕</button>
+    </div>
+    <div class="modal-body">
       <input type="hidden" id="returnBorrowId" />
       <form id="returnForm" class="space-y-4">
         <div>
-          <label class="form-label">Borrower Name *</label>
-          <input name="borrower_name_display" type="text" class="form-input bg-gray-50" readonly />
+          <label class="form-label">Borrower Name <span style="color:#ef4444">*</span></label>
+          <input name="borrower_name_display" type="text" class="form-input" placeholder="Full name of borrower" required />
+          <p style="font-size:.75rem;color:#94a3b8;margin-top:5px;font-weight:500">
+            You may edit this if someone else is returning the item.
+          </p>
         </div>
         <div>
-          <label class="form-label">Person Who Received Returned Item *</label>
+          <label class="form-label">Person Who Received Returned Item <span style="color:#ef4444">*</span></label>
           <input name="received_by_name" type="text" class="form-input" placeholder="Full name" required />
         </div>
         <div>
-          <label class="form-label">Return Date *</label>
+          <label class="form-label">Return Date <span style="color:#ef4444">*</span></label>
           <input name="return_date" type="date" class="form-input" required />
         </div>
         <div class="flex gap-3 justify-end pt-2">
-          <button type="button" onclick="closeModal('returnModal')" class="px-5 py-2 rounded-lg border text-gray-600 hover:bg-gray-100">Cancel</button>
-          <button type="submit" class="px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 font-medium">Confirm Return</button>
+          <button type="button" onclick="closeModal('returnModal')" class="mbtn-cancel">Cancel</button>
+          <button type="submit" class="mbtn-submit ms-blue">Confirm Return</button>
         </div>
       </form>
     </div>
   </div>
 </div>
 
-<!-- VIEW MODAL -->
-<div id="viewModal" class="modal-backdrop fixed inset-0 bg-black bg-opacity-50 z-30 items-center justify-center p-4">
-  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-    <div class="p-6">
-      <div class="flex justify-between items-center mb-5">
-        <h3 class="text-lg font-bold text-gray-800" id="viewModalTitle">Record Details</h3>
-        <button onclick="closeModal('viewModal')" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+<!-- ═══ VIEW MODAL ═════════════════════════════════════════════ -->
+<div id="viewModal" class="modal-backdrop fixed inset-0 bg-black/50 backdrop-blur-sm z-40 items-center justify-center p-4">
+  <div class="modal-panel max-w-2xl">
+    <div class="modal-header">
+      <div class="flex items-center gap-3">
+        <div class="mh-icon" style="background:#f1f5f9">📋</div>
+        <h3 id="viewModalTitle">Record Details</h3>
       </div>
-      <div id="viewModalContent" class="space-y-3 text-sm text-gray-700"></div>
-      <div class="mt-5 flex justify-end">
-        <button onclick="closeModal('viewModal')" class="px-5 py-2 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300">Close</button>
+      <button onclick="closeModal('viewModal')" class="modal-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="viewModalContent"></div>
+      <div class="flex justify-end mt-4">
+        <button onclick="closeModal('viewModal')" class="mbtn-cancel">Close</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- DELETE CONFIRM MODAL -->
-<div id="deleteModal" class="modal-backdrop fixed inset-0 bg-black bg-opacity-50 z-40 items-center justify-center p-4">
-  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-    <h3 class="text-lg font-bold text-gray-800 mb-2">🗑️ Confirm Delete</h3>
-    <p class="text-gray-500 text-sm mb-4">Please enter admin password to confirm deletion.</p>
-    <input id="deleteAdminPassword" type="password" class="form-input w-full mb-4" placeholder="Admin password" />
-    <div class="flex gap-3 justify-end">
-      <button onclick="closeModal('deleteModal')" class="px-5 py-2 rounded-lg border text-gray-600 hover:bg-gray-100">Cancel</button>
-      <button id="confirmDeleteBtn" class="px-5 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 font-medium">Delete</button>
+<!-- ═══ DELETE MODAL ═══════════════════════════════════════════ -->
+<div id="deleteModal" class="modal-backdrop fixed inset-0 bg-black/50 backdrop-blur-sm z-50 items-center justify-center p-4">
+  <div class="modal-panel max-w-sm">
+    <div class="modal-header">
+      <div class="flex items-center gap-3">
+        <div class="mh-icon" style="background:#fee2e2">🗑️</div>
+        <h3>Confirm Delete</h3>
+      </div>
+      <button onclick="closeModal('deleteModal')" class="modal-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="color:#64748b;font-size:.9rem;margin-bottom:1.25rem;line-height:1.5">
+        Enter your admin password to permanently delete this record.
+      </p>
+      <input id="deleteAdminPassword" type="password" class="form-input w-full mb-4" placeholder="Admin password" />
+      <div class="flex gap-3 justify-end">
+        <button onclick="closeModal('deleteModal')" class="mbtn-cancel">Cancel</button>
+        <button id="confirmDeleteBtn" class="mbtn-submit ms-red">Delete</button>
+      </div>
     </div>
   </div>
 </div>
-
-<style>
-  .form-label { display: block; font-size: 0.8rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem; }
-  .form-input { width: 100%; border: 1px solid #d1d5db; border-radius: 0.5rem; padding: 0.5rem 0.75rem; font-size: 0.875rem; outline: none; }
-  .form-input:focus { ring: 2px; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.2); }
-  .status-pill { display: inline-block; padding: 2px 10px; border-radius: 9999px; font-size: 0.7rem; font-weight: 600; }
-  .status-Received { background: #dbeafe; color: #1d4ed8; }
-  .status-Repaired { background: #fef3c7; color: #d97706; }
-  .status-Released { background: #d1fae5; color: #059669; }
-  .status-Borrowed { background: #ede9fe; color: #7c3aed; }
-  .status-Returned { background: #d1fae5; color: #059669; }
-</style>
 
 <script>
-// ============================================================
-// STATE
-// ============================================================
-let repairs = [];
-let borrows = [];
-let currentDeleteCallback = null;
-let currentTab = 'repair';
+// ── OFFICE DROPDOWNS ──────────────────────────────────────────
+function handleOfficeChange() {
+  const sel=document.getElementById('officeSelect'), wrapper=document.getElementById('otherOfficeWrapper');
+  const hidden=document.getElementById('officeNameHidden'), other=document.getElementById('otherOfficeName');
+  if (sel.value==='Others') { wrapper.classList.remove('hidden'); hidden.value=other.value||''; other.setAttribute('required','required'); }
+  else { wrapper.classList.add('hidden'); hidden.value=sel.value; other.removeAttribute('required'); }
+}
+function handleBorrowOfficeChange() {
+  const sel=document.getElementById('borrowOfficeSelect'), wrapper=document.getElementById('otherBorrowOfficeWrapper');
+  const hidden=document.getElementById('borrowOfficeHidden'), other=document.getElementById('otherBorrowOfficeName');
+  if (sel.value==='Others') { wrapper.classList.remove('hidden'); hidden.value=other.value||''; other.setAttribute('required','required'); }
+  else { wrapper.classList.add('hidden'); hidden.value=sel.value; other.removeAttribute('required'); }
+}
 
-// ============================================================
-// INIT
-// ============================================================
+// ── STATE ─────────────────────────────────────────────────────
+let repairs=[], borrows=[], currentDeleteCallback=null, currentTab='repair';
+
 document.addEventListener('DOMContentLoaded', async () => {
   setDefaultDates();
   const me = await api('/api/me');
-  if (me.loggedIn) {
-    showApp(me.username);
-    loadAll();
-  } else {
-    showLogin();
-  }
+  if (me.loggedIn) { showApp(me.username); loadAll(); } else showLogin();
 });
 
 function setDefaultDates() {
-  const today = new Date().toISOString().split('T')[0];
-  document.querySelectorAll('input[type="date"]').forEach(el => el.value = today);
+  const t=new Date().toISOString().split('T')[0];
+  document.querySelectorAll('input[type="date"]').forEach(el=>el.value=t);
 }
-
-function showApp(username) {
+function showApp(u) {
   document.getElementById('loginPage').classList.add('hidden');
   document.getElementById('mainApp').classList.remove('hidden');
-  document.getElementById('adminName').textContent = username;
+  document.getElementById('adminName').textContent=u;
+  document.getElementById('adminInitial').textContent=u.charAt(0).toUpperCase();
 }
-
 function showLogin() {
   document.getElementById('loginPage').classList.remove('hidden');
   document.getElementById('mainApp').classList.add('hidden');
 }
 
-// ============================================================
-// API HELPER
-// ============================================================
-async function api(url, method = 'GET', body = null) {
-  const opts = { method, headers: { 'Content-Type': 'application/json' } };
-  if (body) opts.body = JSON.stringify(body);
-  const res = await fetch(url, opts);
-  return res.json();
+async function api(url,method='GET',body=null) {
+  const opts={method,headers:{'Content-Type':'application/json'}};
+  if (body) opts.body=JSON.stringify(body);
+  return (await fetch(url,opts)).json();
 }
 
-// ============================================================
-// AUTH
-// ============================================================
-document.getElementById('loginForm').addEventListener('submit', async (e) => {
+document.getElementById('loginForm').addEventListener('submit', async e => {
   e.preventDefault();
-  const username = document.getElementById('loginUsername').value;
-  const password = document.getElementById('loginPassword').value;
-  const res = await api('/login', 'POST', { username, password });
-  if (res.success) {
-    showApp(username);
-    loadAll();
-  } else {
-    const err = document.getElementById('loginError');
-    err.textContent = res.message;
-    err.classList.remove('hidden');
-  }
+  const res=await api('/login','POST',{username:document.getElementById('loginUsername').value,password:document.getElementById('loginPassword').value});
+  if (res.success) { showApp(document.getElementById('loginUsername').value); loadAll(); }
+  else { const p=document.getElementById('loginError'); p.textContent=res.message; p.classList.remove('hidden'); }
 });
-
-async function logout() {
-  await api('/logout', 'POST');
-  showLogin();
-}
-
+async function logout() { await api('/logout','POST'); showLogin(); }
 async function createAdmin() {
-  const username = document.getElementById('setupUser').value;
-  const password = document.getElementById('setupPass').value;
-  const res = await api('/api/setup', 'POST', { username, password });
-  const msg = document.getElementById('setupMsg');
-  msg.textContent = res.message;
-  msg.className = res.success ? 'text-green-600 text-xs' : 'text-red-500 text-xs';
+  const res=await api('/api/setup','POST',{username:document.getElementById('setupUser').value,password:document.getElementById('setupPass').value});
+  const m=document.getElementById('setupMsg'); m.textContent=res.message; m.style.color=res.success?'#22c55e':'#ef4444';
 }
 
-// ============================================================
-// TAB SWITCHING
-// ============================================================
 function switchTab(tab) {
-  currentTab = tab;
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById(`tab-${tab}`).classList.add('active');
-  ['repair','borrow','pending','history'].forEach(t => {
-    document.getElementById(`tab-${t}-content`).classList.toggle('hidden', t !== tab);
-  });
-  if (tab === 'pending') renderPending();
-  if (tab === 'history') renderHistory();
+  currentTab=tab;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  ['repair','borrow','pending','history'].forEach(t=>document.getElementById('tab-'+t+'-content').classList.toggle('hidden',t!==tab));
+  if (tab==='pending') renderPending();
+  if (tab==='history') renderHistory();
 }
 
-// ============================================================
-// LOAD DATA
-// ============================================================
 async function loadAll() {
-  const [repairRes, borrowRes] = await Promise.all([
-    api('/api/repairs'),
-    api('/api/borrows')
-  ]);
-  if (repairRes.success) repairs = repairRes.data;
-  if (borrowRes.success) borrows = borrowRes.data;
-  renderRepairs();
-  renderBorrows();
-  updatePendingBadge();
+  const [rr,br]=await Promise.all([api('/api/repairs'),api('/api/borrows')]);
+  if (rr.success) repairs=rr.data; if (br.success) borrows=br.data;
+  renderRepairs(); renderBorrows(); updatePendingBadge();
 }
 
-// ============================================================
-// REPAIRS TABLE
-// ============================================================
 function renderRepairs() {
-  const tbody = document.getElementById('repairTableBody');
-  const empty = document.getElementById('repairEmpty');
-  const all = repairs;
-  if (!all.length) { tbody.innerHTML = ''; empty.classList.remove('hidden'); return; }
+  const tbody=document.getElementById('repairTableBody'), empty=document.getElementById('repairEmpty');
+  if (!repairs.length) { tbody.innerHTML=''; empty.classList.remove('hidden'); return; }
   empty.classList.add('hidden');
-  tbody.innerHTML = all.map(r => `
-    <tr class="hover:bg-gray-50">
-      <td class="px-4 py-3 font-mono text-xs">#${r.id}</td>
-      <td class="px-4 py-3">${esc(r.office_name)}</td>
-      <td class="px-4 py-3">${esc(r.brought_by_name)}<br><span class="text-xs text-gray-400">${esc(r.brought_by_role)}</span></td>
-      <td class="px-4 py-3">${esc(r.product_name)}<br><span class="text-xs text-gray-400">${esc(r.serial_number||r.model_number||'')}</span></td>
-      <td class="px-4 py-3">${r.quantity}</td>
-      <td class="px-4 py-3 max-w-xs truncate">${esc(r.problem_description||'')}</td>
-      <td class="px-4 py-3">${esc(r.received_by_name)}<br><span class="text-xs text-gray-400">${esc(r.received_by_role)}</span></td>
-      <td class="px-4 py-3 text-xs">${esc(r.contact_number||'')}</td>
-      <td class="px-4 py-3 text-xs">${fmtDate(r.receive_date)}</td>
-      <td class="px-4 py-3"><span class="status-pill status-${r.status}">${r.status}</span></td>
-      <td class="px-4 py-3">
-        <div class="flex gap-1 flex-wrap">
-          ${r.status === 'Received' ? `<button onclick="openRepairModal(${r.id})" class="btn-sm bg-orange-500 text-white">Repair</button>` : ''}
-          ${r.status === 'Repaired' ? `<button onclick="openReleaseModal(${r.id})" class="btn-sm bg-green-500 text-white">Release</button>` : ''}
-          <button onclick="openViewRepair(${r.id})" class="btn-sm bg-gray-200 text-gray-700">View</button>
-          <button onclick="confirmDelete('repair', ${r.id})" class="btn-sm bg-red-100 text-red-600">Del</button>
-        </div>
-      </td>
-    </tr>
-  `).join('');
+  tbody.innerHTML=repairs.map(r=>`<tr>
+    <td><span class="td-mono">#${r.id}</span></td>
+    <td><strong>${esc(r.office_name)}</strong></td>
+    <td>${esc(r.brought_by_name)}<div class="td-sub">${esc(r.brought_by_role)}</div></td>
+    <td><strong>${esc(r.product_name)}</strong><div class="td-sub td-mono">${esc(r.serial_number||r.model_number||'')}</div></td>
+    <td>${r.quantity}</td>
+    <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.82rem;color:#64748b">${esc(r.problem_description||'—')}</td>
+    <td>${esc(r.received_by_name)}<div class="td-sub">${esc(r.received_by_role)}</div></td>
+    <td style="white-space:nowrap;font-size:.85rem">${fmtDate(r.receive_date)}</td>
+    <td><span class="pill pill-${r.status}">${r.status}</span></td>
+    <td style="white-space:nowrap"><div style="display:flex;gap:6px;flex-wrap:nowrap;align-items:center">
+      ${r.status==='Received'?`<button onclick="openRepairModal(${r.id})" class="btn btn-repair">🔧 Repair</button>`:''}
+      ${r.status==='Repaired'?`<button onclick="openReleaseModal(${r.id})" class="btn btn-release">📤 Release</button>`:''}
+      <button onclick="openViewRepair(${r.id})" class="btn btn-view">View</button>
+      <button onclick="confirmDelete('repair',${r.id})" class="btn btn-del">Del</button>
+    </div></td>
+  </tr>`).join('');
 }
 
-// ============================================================
-// BORROWS TABLE
-// ============================================================
 function renderBorrows() {
-  const tbody = document.getElementById('borrowTableBody');
-  const empty = document.getElementById('borrowEmpty');
-  if (!borrows.length) { tbody.innerHTML = ''; empty.classList.remove('hidden'); return; }
+  const tbody=document.getElementById('borrowTableBody'), empty=document.getElementById('borrowEmpty');
+  if (!borrows.length) { tbody.innerHTML=''; empty.classList.remove('hidden'); return; }
   empty.classList.add('hidden');
-  tbody.innerHTML = borrows.map(b => `
-    <tr class="hover:bg-gray-50">
-      <td class="px-4 py-3 font-mono text-xs">#${b.id}</td>
-      <td class="px-4 py-3">${esc(b.borrower_name)}</td>
-      <td class="px-4 py-3">${esc(b.released_by_name)}</td>
-      <td class="px-4 py-3">${esc(b.item_name)}</td>
-      <td class="px-4 py-3">${b.quantity}</td>
-      <td class="px-4 py-3 text-xs">${fmtDate(b.borrow_date)}</td>
-      <td class="px-4 py-3"><span class="status-pill status-${b.status}">${b.status}</span></td>
-      <td class="px-4 py-3">
-        <div class="flex gap-1 flex-wrap">
-          ${b.status === 'Borrowed' ? `<button onclick="openReturnModal(${b.id}, '${esc(b.borrower_name)}')" class="btn-sm bg-blue-500 text-white">Return</button>` : ''}
-          <button onclick="openViewBorrow(${b.id})" class="btn-sm bg-gray-200 text-gray-700">View</button>
-          <button onclick="confirmDelete('borrow', ${b.id})" class="btn-sm bg-red-100 text-red-600">Del</button>
-        </div>
-      </td>
-    </tr>
-  `).join('');
+  tbody.innerHTML=borrows.map(b=>`<tr>
+    <td><span class="td-mono">#${b.id}</span></td>
+    <td><strong>${esc(b.borrower_name)}</strong></td>
+    <td style="font-size:.85rem;color:#475569">${esc(b.borrow_office||'—')}</td>
+    <td>${esc(b.released_by_name)}<div class="td-sub">${esc(b.released_by_role||'')}</div></td>
+    <td><strong>${esc(b.item_name)}</strong></td>
+    <td>${b.quantity}</td>
+    <td style="white-space:nowrap;font-size:.85rem">${fmtDate(b.borrow_date)}</td>
+    <td><span class="pill pill-${b.status}">${b.status}</span></td>
+    <td style="white-space:nowrap"><div style="display:flex;gap:6px;flex-wrap:nowrap;align-items:center">
+      ${b.status==='Borrowed'?`<button onclick="openReturnModal(${b.id},'${esc(b.borrower_name)}')" class="btn btn-return">↩️ Return</button>`:''}
+      <button onclick="openViewBorrow(${b.id})" class="btn btn-view">View</button>
+      <button onclick="confirmDelete('borrow',${b.id})" class="btn btn-del">Del</button>
+    </div></td>
+  </tr>`).join('');
 }
 
-// ============================================================
-// PENDING TABLE
-// ============================================================
 function renderPending() {
-  const tbody = document.getElementById('pendingTableBody');
-  const empty = document.getElementById('pendingEmpty');
-  const pendingRepairs = repairs.filter(r => r.status === 'Received' || r.status === 'Repaired');
-  const pendingBorrows = borrows.filter(b => b.status === 'Borrowed');
-
-  const allPending = [
-    ...pendingRepairs.map(r => ({
-      id: r.id, type: 'Repair', label: r.status === 'Received' ? 'Awaiting Repair' : 'Awaiting Release',
-      details: `${esc(r.product_name)} — ${esc(r.office_name)}`,
-      status: r.status, date: r.receive_date, raw: r, kind: 'repair'
-    })),
-    ...pendingBorrows.map(b => ({
-      id: b.id, type: 'Borrow', label: 'Borrowed',
-      details: `${esc(b.item_name)} (x${b.quantity}) — ${esc(b.borrower_name)}`,
-      status: b.status, date: b.borrow_date, raw: b, kind: 'borrow'
-    }))
+  const tbody=document.getElementById('pendingTableBody'), empty=document.getElementById('pendingEmpty');
+  const pr=repairs.filter(r=>r.status==='Received'||r.status==='Repaired');
+  const pb=borrows.filter(b=>b.status==='Borrowed');
+  const all=[
+    ...pr.map(r=>({id:r.id,type:'Repair',label:r.status==='Received'?'Awaiting Repair':'Awaiting Release',details:`${esc(r.product_name)} — ${esc(r.office_name)}`,status:r.status,date:r.receive_date,raw:r,kind:'repair'})),
+    ...pb.map(b=>({id:b.id,type:'Borrow',label:'Borrowed',details:`${esc(b.item_name)} (×${b.quantity}) — ${esc(b.borrower_name)}`,status:b.status,date:b.borrow_date,raw:b,kind:'borrow'}))
   ];
-
-  if (!allPending.length) { tbody.innerHTML = ''; empty.classList.remove('hidden'); return; }
+  if (!all.length) { tbody.innerHTML=''; empty.classList.remove('hidden'); return; }
   empty.classList.add('hidden');
-
-  tbody.innerHTML = allPending.map(p => `
-    <tr class="hover:bg-gray-50">
-      <td class="px-4 py-3 font-mono text-xs">#${p.id}</td>
-      <td class="px-4 py-3">
-        <span class="status-pill ${p.type === 'Repair' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}">${p.type}</span>
-      </td>
-      <td class="px-4 py-3">${p.details}</td>
-      <td class="px-4 py-3"><span class="status-pill status-${p.status}">${p.label}</span></td>
-      <td class="px-4 py-3 text-xs">${fmtDate(p.date)}</td>
-      <td class="px-4 py-3">
-        <div class="flex gap-1 flex-wrap">
-          ${p.kind === 'repair' && p.status === 'Received' ? `<button onclick="openRepairModal(${p.id})" class="btn-sm bg-orange-500 text-white">Repair</button>` : ''}
-          ${p.kind === 'repair' && p.status === 'Repaired' ? `<button onclick="openReleaseModal(${p.id})" class="btn-sm bg-green-500 text-white">Release</button>` : ''}
-          ${p.kind === 'borrow' ? `<button onclick="openReturnModal(${p.id}, '${p.raw.borrower_name}')" class="btn-sm bg-blue-500 text-white">Return</button>` : ''}
-        </div>
-      </td>
-    </tr>
-  `).join('');
+  tbody.innerHTML=all.map(p=>`<tr>
+    <td><span class="td-mono">#${p.id}</span></td>
+    <td><span class="pill pill-${p.type}">${p.type}</span></td>
+    <td><strong>${p.details}</strong></td>
+    <td><span class="pill pill-${p.status}">${p.label}</span></td>
+    <td style="white-space:nowrap;font-size:.85rem">${fmtDate(p.date)}</td>
+    <td><div style="display:flex;gap:6px">
+      ${p.kind==='repair'&&p.status==='Received'?`<button onclick="openRepairModal(${p.id})" class="btn btn-repair">🔧 Repair</button>`:''}
+      ${p.kind==='repair'&&p.status==='Repaired'?`<button onclick="openReleaseModal(${p.id})" class="btn btn-release">📤 Release</button>`:''}
+      ${p.kind==='borrow'?`<button onclick="openReturnModal(${p.id},'${p.raw.borrower_name}')" class="btn btn-return">↩️ Return</button>`:''}
+    </div></td>
+  </tr>`).join('');
 }
 
-// ============================================================
-// HISTORY TABLE
-// ============================================================
 function renderHistory() {
-  const tbody = document.getElementById('historyTableBody');
-  const empty = document.getElementById('historyEmpty');
-  const released = repairs.filter(r => r.status === 'Released');
-  const returned = borrows.filter(b => b.status === 'Returned');
-
-  const all = [
-    ...released.map(r => ({
-      id: r.id, type: 'Repair', kind: 'repair',
-      details: `${esc(r.product_name)} — ${esc(r.office_name)}`,
-      date: r.release_date, raw: r
-    })),
-    ...returned.map(b => ({
-      id: b.id, type: 'Borrow', kind: 'borrow',
-      details: `${esc(b.item_name)} — ${esc(b.borrower_name)}`,
-      date: b.return_date, raw: b
-    }))
+  const tbody=document.getElementById('historyTableBody'), empty=document.getElementById('historyEmpty');
+  const all=[
+    ...repairs.filter(r=>r.status==='Released').map(r=>({id:r.id,type:'Repair',kind:'repair',details:`${esc(r.product_name)} — ${esc(r.office_name)}`,date:r.release_date})),
+    ...borrows.filter(b=>b.status==='Returned').map(b=>({id:b.id,type:'Borrow',kind:'borrow',details:`${esc(b.item_name)} — ${esc(b.borrower_name)}`,date:b.return_date}))
   ];
-
-  if (!all.length) { tbody.innerHTML = ''; empty.classList.remove('hidden'); return; }
+  if (!all.length) { tbody.innerHTML=''; empty.classList.remove('hidden'); return; }
   empty.classList.add('hidden');
-
-  tbody.innerHTML = all.map(h => `
-    <tr class="hover:bg-gray-50">
-      <td class="px-4 py-3 font-mono text-xs">#${h.id}</td>
-      <td class="px-4 py-3">
-        <span class="status-pill ${h.type === 'Repair' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}">${h.type}</span>
-      </td>
-      <td class="px-4 py-3">${h.details}</td>
-      <td class="px-4 py-3 text-xs">${fmtDate(h.date)}</td>
-      <td class="px-4 py-3">
-        <div class="flex gap-1">
-          <button onclick="${h.kind === 'repair' ? `openViewRepair(${h.id})` : `openViewBorrow(${h.id})`}" class="btn-sm bg-gray-200 text-gray-700">View</button>
-          <button onclick="confirmDelete('${h.kind}', ${h.id})" class="btn-sm bg-red-100 text-red-600">Del</button>
-        </div>
-      </td>
-    </tr>
-  `).join('');
+  tbody.innerHTML=all.map(h=>`<tr>
+    <td><span class="td-mono">#${h.id}</span></td>
+    <td><span class="pill pill-${h.type}">${h.type}</span></td>
+    <td><strong>${h.details}</strong></td>
+    <td style="white-space:nowrap;font-size:.85rem">${fmtDate(h.date)}</td>
+    <td><div style="display:flex;gap:6px">
+      <button onclick="${h.kind==='repair'?`openViewRepair(${h.id})`:`openViewBorrow(${h.id})`}" class="btn btn-view">View</button>
+      <button onclick="confirmDelete('${h.kind}',${h.id})" class="btn btn-del">Del</button>
+    </div></td>
+  </tr>`).join('');
 }
 
 function updatePendingBadge() {
-  const count = repairs.filter(r => r.status !== 'Released').length + borrows.filter(b => b.status === 'Borrowed').length;
-  const badge = document.getElementById('pendingBadge');
-  badge.textContent = count > 0 ? count : '';
+  const n=repairs.filter(r=>r.status!=='Released').length+borrows.filter(b=>b.status==='Borrowed').length;
+  document.getElementById('pendingBadge').textContent=n>0?n:'';
 }
 
-// ============================================================
-// RECEIVE FORM
-// ============================================================
-document.getElementById('receiveForm').addEventListener('submit', async (e) => {
+document.getElementById('receiveForm').addEventListener('submit', async e => {
   e.preventDefault();
-  const data = formToObj(e.target);
-  const res = await api('/api/repairs', 'POST', data);
+  const sel=document.getElementById('officeSelect'), hidden=document.getElementById('officeNameHidden');
+  if (sel.value==='Others'&&!hidden.value.trim()) { toast('Please type the office name','error'); return; }
+  if (!hidden.value) { toast('Please select an office','error'); return; }
+  const data=formToObj(e.target); data.office_name=hidden.value;
+  const res=await api('/api/repairs','POST',data);
   if (res.success) {
-    toast('Item received and logged!', 'success');
-    closeModal('receiveModal');
-    e.target.reset();
-    setDefaultDates();
-    await loadAll();
-  } else {
-    toast(res.message, 'error');
-  }
+    toast('Item received and logged!','success'); closeModal('receiveModal'); e.target.reset();
+    sel.value=''; hidden.value=''; document.getElementById('otherOfficeWrapper').classList.add('hidden');
+    setDefaultDates(); await loadAll();
+  } else toast(res.message,'error');
 });
 
-// ============================================================
-// REPAIR FORM
-// ============================================================
-function openRepairModal(id) {
-  document.getElementById('repairTxId').value = id;
-  openModal('repairModal');
-}
-
-document.getElementById('repairForm').addEventListener('submit', async (e) => {
+function openRepairModal(id) { document.getElementById('repairTxId').value=id; openModal('repairModal'); }
+document.getElementById('repairForm').addEventListener('submit', async e => {
   e.preventDefault();
-  const id = document.getElementById('repairTxId').value;
-  const data = formToObj(e.target);
-  const res = await api(`/api/repairs/${id}/repair`, 'PUT', data);
+  const id=document.getElementById('repairTxId').value;
+  const res=await api(`/api/repairs/${id}/repair`,'PUT',formToObj(e.target));
   if (res.success) {
-    toast('Repair details saved!', 'success');
-    closeModal('repairModal');
-    e.target.reset();
-    setDefaultDates();
-    await loadAll();
-    if (currentTab === 'pending') renderPending();
-    if (currentTab === 'repair') renderRepairs();
-  } else {
-    toast(res.message, 'error');
-  }
+    toast('Repair details saved!','success'); closeModal('repairModal'); e.target.reset();
+    setDefaultDates(); await loadAll();
+    if (currentTab==='pending') renderPending(); if (currentTab==='repair') renderRepairs();
+  } else toast(res.message,'error');
 });
 
-// ============================================================
-// RELEASE FORM
-// ============================================================
-function openReleaseModal(id) {
-  document.getElementById('releaseTxId').value = id;
-  openModal('releaseModal');
-}
-
-document.getElementById('releaseForm').addEventListener('submit', async (e) => {
+function openReleaseModal(id) { document.getElementById('releaseTxId').value=id; openModal('releaseModal'); }
+document.getElementById('releaseForm').addEventListener('submit', async e => {
   e.preventDefault();
-  const id = document.getElementById('releaseTxId').value;
-  const data = formToObj(e.target);
-  const res = await api(`/api/repairs/${id}/release`, 'PUT', data);
+  const id=document.getElementById('releaseTxId').value;
+  const res=await api(`/api/repairs/${id}/release`,'PUT',formToObj(e.target));
   if (res.success) {
-    toast('Item released!', 'success');
-    closeModal('releaseModal');
-    e.target.reset();
-    setDefaultDates();
-    await loadAll();
-    if (currentTab === 'pending') renderPending();
-    if (currentTab === 'history') renderHistory();
-  } else {
-    toast(res.message, 'error');
-  }
+    toast('Item released!','success'); closeModal('releaseModal'); e.target.reset();
+    setDefaultDates(); await loadAll();
+    if (currentTab==='pending') renderPending(); if (currentTab==='history') renderHistory();
+  } else toast(res.message,'error');
 });
 
-// ============================================================
-// BORROW FORM
-// ============================================================
-document.getElementById('borrowForm').addEventListener('submit', async (e) => {
+document.getElementById('borrowForm').addEventListener('submit', async e => {
   e.preventDefault();
-  const data = formToObj(e.target);
-  const res = await api('/api/borrows', 'POST', data);
+  const sel=document.getElementById('borrowOfficeSelect'), hidden=document.getElementById('borrowOfficeHidden');
+  if (sel.value==='Others'&&!hidden.value.trim()) { toast('Please type the office name','error'); return; }
+  if (!hidden.value) { toast('Please select an office','error'); return; }
+  const data=formToObj(e.target); data.borrow_office=hidden.value;
+  const res=await api('/api/borrows','POST',data);
   if (res.success) {
-    toast('Borrow transaction created!', 'success');
-    closeModal('borrowModal');
-    e.target.reset();
-    setDefaultDates();
-    await loadAll();
-  } else {
-    toast(res.message, 'error');
-  }
+    toast('Borrow transaction created!','success'); closeModal('borrowModal'); e.target.reset();
+    sel.value=''; hidden.value=''; document.getElementById('otherBorrowOfficeWrapper').classList.add('hidden');
+    setDefaultDates(); await loadAll();
+  } else toast(res.message,'error');
 });
 
-// ============================================================
-// RETURN FORM
-// ============================================================
-function openReturnModal(id, borrowerName) {
-  document.getElementById('returnBorrowId').value = id;
-  document.querySelector('#returnForm [name="borrower_name_display"]').value = borrowerName;
+function openReturnModal(id,name) {
+  document.getElementById('returnBorrowId').value=id;
+  document.querySelector('#returnForm [name="borrower_name_display"]').value=name;
   openModal('returnModal');
 }
-
-document.getElementById('returnForm').addEventListener('submit', async (e) => {
+document.getElementById('returnForm').addEventListener('submit', async e => {
   e.preventDefault();
-  const id = document.getElementById('returnBorrowId').value;
-  const data = formToObj(e.target);
-  const res = await api(`/api/borrows/${id}/return`, 'PUT', data);
+  const id=document.getElementById('returnBorrowId').value;
+  const res=await api(`/api/borrows/${id}/return`,'PUT',formToObj(e.target));
   if (res.success) {
-    toast('Item returned!', 'success');
-    closeModal('returnModal');
-    e.target.reset();
-    setDefaultDates();
-    await loadAll();
-    if (currentTab === 'pending') renderPending();
-    if (currentTab === 'history') renderHistory();
-  } else {
-    toast(res.message, 'error');
-  }
+    toast('Item returned!','success'); closeModal('returnModal'); e.target.reset();
+    setDefaultDates(); await loadAll();
+    if (currentTab==='pending') renderPending(); if (currentTab==='history') renderHistory();
+  } else toast(res.message,'error');
 });
 
-// ============================================================
-// VIEW MODALS
-// ============================================================
 function openViewRepair(id) {
-  const r = repairs.find(x => x.id === id);
-  if (!r) return;
-  document.getElementById('viewModalTitle').textContent = `Repair Record #${r.id}`;
-  document.getElementById('viewModalContent').innerHTML = viewSection('Receive Details', [
-    ['Office', r.office_name],
-    ['Brought By', `${r.brought_by_name} (${r.brought_by_role})`],
-    ['Product', r.product_name],
-    ['Serial/Model', `${r.serial_number||''} / ${r.model_number||''}`],
-    ['Quantity', r.quantity],
-    ['Problem', r.problem_description],
-    ['Received By', `${r.received_by_name} (${r.received_by_role})`],
-    ['Contact', r.contact_number],
-    ['Date Received', fmtDate(r.receive_date)],
-    ['Status', r.status],
-  ]) + (r.repair_date ? viewSection('Repair Details', [
-    ['Repair Person', `${r.repair_person_name||''} (${r.repair_person_role||''})`],
-    ['Repair Date', fmtDate(r.repair_date)],
-    ['Repair Status', r.repair_status],
-    ['Comment', r.comment],
-  ]) : '') + (r.release_date ? viewSection('Release Details', [
-    ['Released To', r.released_to_name],
-    ['Released By', r.released_by_name],
-    ['Release Date', fmtDate(r.release_date)],
-  ]) : '');
+  const r=repairs.find(x=>x.id===id); if (!r) return;
+  document.getElementById('viewModalTitle').textContent=`Repair Record #${r.id}`;
+  document.getElementById('viewModalContent').innerHTML=
+    vs('📥 Receive Details',[['Office',r.office_name],['Brought By',`${r.brought_by_name} (${r.brought_by_role})`],['Product',r.product_name],['Serial / Model',`${r.serial_number||'—'} / ${r.model_number||'—'}`],['Quantity',r.quantity],['Problem',r.problem_description],['Received By',`${r.received_by_name} (${r.received_by_role})`],['Date Received',fmtDate(r.receive_date)],['Status',r.status]])+
+    (r.repair_date?vs('🔧 Repair Details',[['Repair Person',`${r.repair_person_name||''} (${r.repair_person_role||''})`],['Repair Date',fmtDate(r.repair_date)],['Repair Status',r.repair_status],['Comment',r.comment]]):'')+
+    (r.release_date?vs('📤 Release Details',[['Released To',r.released_to_name],['Released By',r.released_by_name],['Release Date',fmtDate(r.release_date)]]):'' );
   openModal('viewModal');
 }
-
 function openViewBorrow(id) {
-  const b = borrows.find(x => x.id === id);
-  if (!b) return;
-  document.getElementById('viewModalTitle').textContent = `Borrow Record #${b.id}`;
-  document.getElementById('viewModalContent').innerHTML = viewSection('Borrow Details', [
-    ['Borrower', b.borrower_name],
-    ['Released By', b.released_by_name],
-    ['Item', b.item_name],
-    ['Quantity', b.quantity],
-    ['Borrow Date', fmtDate(b.borrow_date)],
-    ['Status', b.status],
-  ]) + (b.return_date ? viewSection('Return Details', [
-    ['Received By', b.received_by_name],
-    ['Return Date', fmtDate(b.return_date)],
-  ]) : '');
+  const b=borrows.find(x=>x.id===id); if (!b) return;
+  document.getElementById('viewModalTitle').textContent=`Borrow Record #${b.id}`;
+  document.getElementById('viewModalContent').innerHTML=
+    vs('📦 Borrow Details',[['Borrower',b.borrower_name],['Office',b.borrow_office||'—'],['Released By',`${b.released_by_name}${b.released_by_role?' ('+b.released_by_role+')':''}`],['Item',b.item_name],['Quantity',b.quantity],['Borrow Date',fmtDate(b.borrow_date)],['Status',b.status]])+
+    (b.return_date?vs('↩️ Return Details',[['Received By',b.received_by_name],['Return Date',fmtDate(b.return_date)]]):'' );
   openModal('viewModal');
 }
-
-function viewSection(title, fields) {
-  return `<div class="bg-gray-50 rounded-lg p-4 mb-3">
-    <h4 class="font-semibold text-gray-700 mb-3 text-xs uppercase tracking-wide">${title}</h4>
-    <div class="grid grid-cols-2 gap-2">
-      ${fields.map(([k,v]) => `<div class="text-gray-500">${k}:</div><div class="font-medium">${v||'—'}</div>`).join('')}
-    </div>
-  </div>`;
+function vs(title,fields) {
+  return `<div class="vs"><div class="vs-title">${title}</div><div class="vs-grid">
+    ${fields.map(([k,v])=>`<div class="vs-key">${k}</div><div class="vs-val">${v||'—'}</div>`).join('')}
+  </div></div>`;
 }
 
-// ============================================================
-// DELETE
-// ============================================================
-function confirmDelete(type, id) {
-  document.getElementById('deleteAdminPassword').value = '';
-  currentDeleteCallback = async () => {
-    const password = document.getElementById('deleteAdminPassword').value;
-    if (!password) { toast('Enter admin password', 'error'); return; }
-    const url = type === 'repair' ? `/api/repairs/${id}` : `/api/borrows/${id}`;
-    const res = await api(url, 'DELETE', { adminPassword: password });
-    if (res.success) {
-      toast('Record deleted.', 'success');
-      closeModal('deleteModal');
-      await loadAll();
-      renderPending();
-      renderHistory();
-    } else {
-      toast(res.message, 'error');
-    }
+function confirmDelete(type,id) {
+  document.getElementById('deleteAdminPassword').value='';
+  currentDeleteCallback=async () => {
+    const pw=document.getElementById('deleteAdminPassword').value;
+    if (!pw) { toast('Enter admin password','error'); return; }
+    const res=await api(type==='repair'?`/api/repairs/${id}`:`/api/borrows/${id}`,'DELETE',{adminPassword:pw});
+    if (res.success) { toast('Record deleted.','success'); closeModal('deleteModal'); await loadAll(); renderPending(); renderHistory(); }
+    else toast(res.message,'error');
   };
   openModal('deleteModal');
 }
+document.getElementById('confirmDeleteBtn').addEventListener('click',()=>{ if (currentDeleteCallback) currentDeleteCallback(); });
 
-document.getElementById('confirmDeleteBtn').addEventListener('click', () => {
-  if (currentDeleteCallback) currentDeleteCallback();
-});
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-backdrop').forEach(m=>m.addEventListener('click',e=>{ if (e.target===m) closeModal(m.id); }));
 
-// ============================================================
-// MODAL HELPERS
-// ============================================================
-function openModal(id) {
-  document.getElementById(id).classList.add('open');
-}
-function closeModal(id) {
-  document.getElementById(id).classList.remove('open');
-}
-
-// Close modal on backdrop click
-document.querySelectorAll('.modal-backdrop').forEach(modal => {
-  modal.addEventListener('click', (e) => {
-    if (e.target === modal) closeModal(modal.id);
-  });
-});
-
-// ============================================================
-// TOAST
-// ============================================================
-function toast(msg, type = 'info') {
-  const container = document.getElementById('toastContainer');
-  const colors = { success: 'bg-green-500', error: 'bg-red-500', info: 'bg-blue-500' };
-  const icons = { success: '✅', error: '❌', info: 'ℹ️' };
-  const div = document.createElement('div');
-  div.className = `toast ${colors[type]} text-white px-5 py-3 rounded-xl shadow-lg flex items-center gap-2 min-w-[220px] pointer-events-auto`;
-  div.innerHTML = `<span>${icons[type]}</span><span class="text-sm font-medium">${msg}</span>`;
-  container.appendChild(div);
-  setTimeout(() => div.remove(), 3200);
+function toast(msg,type='info') {
+  const c=document.getElementById('toastContainer');
+  const bg={success:'linear-gradient(135deg,#22c55e,#15803d)',error:'linear-gradient(135deg,#ef4444,#b91c1c)',info:'linear-gradient(135deg,#2563eb,#1e3a8a)'};
+  const ic={success:'✅',error:'❌',info:'ℹ️'};
+  const d=document.createElement('div'); d.className='toast';
+  d.style.cssText=`background:${bg[type]};color:#fff;padding:13px 20px;border-radius:12px;display:flex;align-items:center;gap:10px;min-width:220px;pointer-events:auto;box-shadow:0 8px 28px rgba(0,0,0,.22);font-family:'DM Sans',sans-serif;font-weight:700;font-size:.9rem`;
+  d.innerHTML=`<span style="font-size:1.1rem">${ic[type]}</span><span>${msg}</span>`;
+  c.appendChild(d); setTimeout(()=>d.remove(),3300);
 }
 
-// ============================================================
-// UTILS
-// ============================================================
-function formToObj(form) {
-  const data = {};
-  new FormData(form).forEach((v, k) => { data[k] = v; });
-  return data;
-}
-
-function fmtDate(d) {
-  if (!d) return '—';
-  return new Date(d).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: '2-digit' });
-}
-
-function esc(str) {
-  if (!str) return '';
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
+function formToObj(form) { const d={}; new FormData(form).forEach((v,k)=>d[k]=v); return d; }
+function fmtDate(d) { if (!d) return '—'; return new Date(d).toLocaleDateString('en-PH',{year:'numeric',month:'short',day:'2-digit'}); }
+function esc(s) { if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 </script>
 </body>
 </html>
