@@ -1,6 +1,6 @@
 -- ============================================================
--- Transaction Log System - 3NF Database Schema
--- Run this in phpMyAdmin or MySQL CLI
+-- Transaction Log System - schema.sql (Updated)
+-- Adds: reservations, tech4ed_sessions, borrow_office column
 -- ============================================================
 
 CREATE DATABASE IF NOT EXISTS transaction_log_db;
@@ -93,7 +93,7 @@ CREATE TABLE IF NOT EXISTS release_details (
 );
 
 -- ============================================================
--- TABLE: borrow_transactions
+-- TABLE: borrow_transactions (updated with borrow_office)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS borrow_transactions (
   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -102,11 +102,15 @@ CREATE TABLE IF NOT EXISTS borrow_transactions (
   item_name VARCHAR(200) NOT NULL,
   quantity INT NOT NULL DEFAULT 1,
   borrow_date DATE NOT NULL,
+  borrow_office VARCHAR(200),
   status ENUM('Borrowed', 'Returned') NOT NULL DEFAULT 'Borrowed',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (borrower_id) REFERENCES persons(id),
   FOREIGN KEY (released_by_id) REFERENCES persons(id)
 );
+
+-- If you already have borrow_transactions, run this to add the column:
+-- ALTER TABLE borrow_transactions ADD COLUMN IF NOT EXISTS borrow_office VARCHAR(200);
 
 -- ============================================================
 -- TABLE: return_details
@@ -121,9 +125,43 @@ CREATE TABLE IF NOT EXISTS return_details (
 );
 
 -- ============================================================
--- SAMPLE ADMIN INSERT (password: admin123)
--- Run after schema creation
+-- TABLE: reservations (NEW)
 -- ============================================================
--- INSERT INTO admins (username, password_hash) VALUES
--- ('admin', '$2b$10$YourBcryptHashHere');
--- Note: Use the setup script or /api/setup endpoint to create admin
+CREATE TABLE IF NOT EXISTS reservations (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  reserver_id INT NOT NULL,
+  office_id INT NOT NULL,
+  item_name VARCHAR(200) NOT NULL,
+  quantity INT NOT NULL DEFAULT 1,
+  purpose TEXT,
+  notes TEXT,
+  reservation_date DATE NOT NULL,
+  estimated_pickup_date DATE NOT NULL,
+  estimated_return_date DATE NOT NULL,
+  actual_pickup_date DATE,
+  actual_return_date DATE,
+  released_by_id INT,
+  received_by_id INT,
+  approved_by_id INT,
+  status ENUM('Reserved', 'Picked', 'Returned', 'Cancelled') NOT NULL DEFAULT 'Reserved',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (reserver_id) REFERENCES persons(id),
+  FOREIGN KEY (office_id) REFERENCES offices(id),
+  FOREIGN KEY (released_by_id) REFERENCES persons(id),
+  FOREIGN KEY (received_by_id) REFERENCES persons(id),
+  FOREIGN KEY (approved_by_id) REFERENCES persons(id)
+);
+
+-- ============================================================
+-- TABLE: tech4ed_sessions (NEW)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS tech4ed_sessions (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_name VARCHAR(200) NOT NULL,
+  gender ENUM('Male', 'Female', 'Other') NOT NULL,
+  purpose VARCHAR(500) NOT NULL,
+  time_in DATETIME NOT NULL,
+  time_out DATETIME,
+  status ENUM('Active', 'Ended') NOT NULL DEFAULT 'Active',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
